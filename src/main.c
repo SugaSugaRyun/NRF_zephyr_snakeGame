@@ -80,8 +80,6 @@ int dir = LEFT; //current direction of snake. can be changed by joystick event
 int idx(int x, int y);
 void move(int dir); 
 void create_apple(); 
-//for gpio setting and interrupt setting
-void setting_io();
 //for button interrupt
 void play_routine();  
 void score_routine();
@@ -118,6 +116,7 @@ void rotary_encoder_moved(){
 void play_music_routine(){
     uint32_t now_pwm_pulse = 150000;
     current_music = 5;
+    seven_segment(current_music);
     while(1){
         change_note_flag = 0;
         for(int i=0; i<melody_len[current_music]/sizeof(int); ){
@@ -127,6 +126,7 @@ void play_music_routine(){
             if(change_note_flag == 1){
                 current_music = (current_music+1)%6;
                 if(current_music < 2) current_music = 2;
+                seven_segment(current_music);
                 break;
             }
             int ret = pwm_set_dt(&pwm_led, (uint32_t)(1/(float)melody[current_music][i++] * 1000000000), now_pwm_pulse);
@@ -272,16 +272,6 @@ int idx(int x, int y){
 }
 
 
-
-void setting_io(){
-    //TODO setting I/O devices and interrupt
-}
-
-//play the BGM using buzzer - using note
-void play_BGM(){
-
-}
-
 bool isChange(void)
 {
 	if((nowX < (preX - 50)) || nowX > (preX+50)){
@@ -388,7 +378,6 @@ int main(){
     pwm_init();
     decoder_init();
 	led_init();
-    setting_io();
     led_set_brightness(led, 0, 0);
     speed = INIT_SPEED;  
     //TODO setting interrupts
