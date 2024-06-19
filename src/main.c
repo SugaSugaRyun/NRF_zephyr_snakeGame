@@ -36,13 +36,10 @@ int32_t nowX = 0;
 int32_t nowY = 0;
 
 //TODO sholud be replaced with Joystick event!
-#define LEFT 75
-#define RIGHT 77
-#define UP 72
-#define DOWN 80
-#define PAUSE 112
-#define ESC 27
-int key;
+#define LEFT 0
+#define RIGHT 1
+#define UP 2
+#define DOWN 3
 //TODO ==============================================
 
 // thread stack size
@@ -101,23 +98,7 @@ extern int melody_len[];
 int change_note_flag= 0;
 
 // ========INTERRUPT FUNCS============================
-//start-stop game
-void btn1_pushed(){
-    if(mode == PLAY) score_routine();
-    else if(mode == SCORE) play_routine();
-}
 
-//pause game
-void btn2_pushed(){
-    if(pause_flag) pause_flag = 0;
-    else pause_flag = 1;
-}
-
-//mute-unmute BGM
-void btn3_pushed(){
-    if(mute_flag) mute_flag = 0;
-    else mute_flag = 1;
-}
 
 //change BGM
 void btn4_pushed(){
@@ -140,7 +121,12 @@ void play_music_routine(){
     while(1){
         change_note_flag = 0;
         for(int i=0; i<melody_len[current_music]/sizeof(int); ){
+            while(mute_flag == 1){
+                k_sleep(K_MSEC(100));
+            }
             if(change_note_flag == 1){
+                current_music = (current_music+1)%6;
+                if(current_music < 2) current_music = 2;
                 break;
             }
             int ret = pwm_set_dt(&pwm_led, (uint32_t)(1/(float)melody[current_music][i++] * 1000000000), now_pwm_pulse);
@@ -166,6 +152,7 @@ void play_music_routine(){
 // play the snake game
 void play_routine(){
     mode = PLAY;
+    printk("i am play routine\n");
 
     //init map state
     for(int i = 0; i < MAP_WIDTH*MAP_HEIGHT; i++) map[i] = 0;
@@ -187,41 +174,27 @@ void play_routine(){
     //start playing
     while(1){
 
-        //TODO shuld be replaced with Joystick event ==================
-        //get moving event, using key now... 
-        // if(kbhit()) do{key=getch();} while(key==224); 
-        // //if joystick area is changed...
-        // if(key == LEFT || key == RIGHT || key == UP || key == DOWN){
-        //     if((dir==LEFT&&key!=RIGHT)||(dir==RIGHT&&key!=LEFT)||(dir==UP&&key!=DOWN)||(dir==DOWN&&key!=UP)) dir=key; 
-        //     key=0; 
-        // }
-
-        // //TODO should be replaced with button1 interrupt
-        // if(key == ESC){
-        //     btn1_pushed(); 
-        //     key = 0;
-        // }
-
-        // //TODO should be replaced with button2 interrupt
-        // if(key == PAUSE){
-        //     // printf("PAUSESDFSDFSDFSDF\n");
-        //     btn2_pushed(); 
-        //     key = 0;
-        // }
-        //TODO ===========================================================
-
         if(pause_flag == 0) move(dir); 
-        // Sleep(speed); //should be replaced... UNIX? idk
         k_sleep(K_MSEC(speed));
+
+        if(mode == SCORE) break;
+
     }//while
+    score_routine();
 }
 
 //display the last score
 void score_routine(){  
     mode = SCORE;
+    printk("i am score routine\n");
     led_num(length-INIT_LENGTH);
-    // k_sleep(K_MSEC(3000));
-    while(1);
+    while(1){
+        // printk("Hello hello\n");
+        k_sleep(K_MSEC(100));
+        if(mode == PLAY) break; 
+    }
+    play_routine();
+    // k_sleep(K_MSEC(5000));
     // btn1_pushed();
     //TODO ===================================================
 }

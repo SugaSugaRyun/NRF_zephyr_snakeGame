@@ -66,11 +66,11 @@ static const struct gpio_dt_spec button1 = GPIO_DT_SPEC_GET(SW1_NODE, gpios);
 #endif
 static const struct gpio_dt_spec button2 = GPIO_DT_SPEC_GET(SW2_NODE, gpios);
 
-// #define SW3_NODE	DT_ALIAS(sw3)
-// #if !DT_NODE_HAS_STATUS(SW3_NODE, okay)
-// #error "Unsupported board: sw3 devicetree alias is not defined"
-// #endif
-// static const struct gpio_dt_spec button3 = GPIO_DT_SPEC_GET(SW3_NODE, gpios);
+#define SW3_NODE	DT_ALIAS(sw3)
+#if !DT_NODE_HAS_STATUS(SW3_NODE, okay)
+#error "Unsupported board: sw3 devicetree alias is not defined"
+#endif
+static const struct gpio_dt_spec button3 = GPIO_DT_SPEC_GET(SW3_NODE, gpios);
 
 int pwm_init(void);
 int decoder_init(void);

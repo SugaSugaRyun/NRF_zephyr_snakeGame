@@ -4,6 +4,7 @@ int current_music = 0;
 static struct gpio_callback button0_cb_data;
 static struct gpio_callback button1_cb_data;
 static struct gpio_callback button2_cb_data;
+static struct gpio_callback button3_cb_data;
 // static struct gpio_callback button3_cb_data;
 
 #define GPIO_P0_BASE 0x50000000
@@ -320,50 +321,41 @@ int melody_len[] = {
 };
 
 extern int mode;
+extern int pause_flag;
+extern int mute_flag;
+extern int change_note_flag;
 
 static uint32_t now_pwm_pulse = 1500000;
 void button0_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     printk("Button 0 pressed\n");
-    if(mode == PLAY) score_routine();
-    else if(mode == SCORE) play_routine();
+    if(mode == PLAY) mode = SCORE; 
+    else if(mode == SCORE) {
+        mode = PLAY;
+        pause_flag = 0;
+    }
 }
 
 void button1_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     printk("Button 1 pressed\n");
+    pause_flag = !pause_flag;
 
-    now_pwm_pulse -= PWM_PULSE_RATE;
-    if((int)now_pwm_pulse < PWM_PULSE_RATE ){
-        now_pwm_pulse = 0;
-    }
-    printk("Setting pwm pulse [%d] pwm_led.period [%d]\n", now_pwm_pulse, pwm_led.period);
-
-    int ret = pwm_set_pulse_dt(&pwm_led, now_pwm_pulse);
-    if(ret < 0){
-        printk("Error setting pwm pulse %d\n", ret);
-    }
-    return;
 }
 
 void button2_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     printk("Button 2 pressed\n");
+    mute_flag = !mute_flag;
 
-    printk("Trun off pwm_led0\n");
-    int ret = pwm_set_dt(&pwm_led, 0, 0);
-    if(ret < 0){
-        printk("Error setting pwm %d\n", ret);
-    }
-
-    now_pwm_pulse = 0;
     return;
 }
 
-// void button3_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-// {
-//     printk("Button 3 pressed\n");
-// }
+void button3_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+    printk("Button 3 pressed\n");
+    change_note_flag = 1;
+}
 
 int decoder_init(void){
     int err;
@@ -420,19 +412,16 @@ int pwm_init(void) {
 
     // Set butto0 interrupt
     printk("Setting button0 interrupt\n");
-
     err = gpio_is_ready_dt(&button0);
     if (!err) {
         printk("Error gpio_is_ready_dt led0 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_configure_dt(&button0, GPIO_INPUT | GPIO_PULL_UP);
     if (err < 0) {
         printk("Error configuring button0 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_interrupt_configure_dt(&button0, GPIO_INT_EDGE_TO_ACTIVE);
     if (err != 0) {
         printk("Error configuring interrupt on button0 pin %d\n", err);
@@ -448,13 +437,11 @@ int pwm_init(void) {
         printk("Error gpio_is_ready_dt led1 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_configure_dt(&button1, GPIO_INPUT | GPIO_PULL_UP);
     if (err < 0) {
         printk("Error configuring button1 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_TO_ACTIVE);
     if (err != 0) {
         printk("Error configuring interrupt on button1 pin %d\n", err);
@@ -470,13 +457,11 @@ int pwm_init(void) {
         printk("Error gpio_is_ready_dt led2 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_configure_dt(&button2, GPIO_INPUT | GPIO_PULL_UP);
     if (err < 0) {
         printk("Error configuring button2 pin %d\n", err);
         return GPIO_FAIL;
     }
-
     err = gpio_pin_interrupt_configure_dt(&button2, GPIO_INT_EDGE_TO_ACTIVE);
     if (err != 0) {
         printk("Error configuring interrupt on button2 pin %d\n", err);
@@ -486,26 +471,24 @@ int pwm_init(void) {
     gpio_add_callback(button2.port, &button2_cb_data);
 
     // Set button3 interrupt
-    // printk("Setting button3 interrupt\n");
-    // err = gpio_is_ready_dt(&button3);
-    // if (!err) {
-    //     printk("Error gpio_is_ready_dt led3 pin %d\n", err);
-    //     return GPIO_FAIL;
-    // }
-
-    // err = gpio_pin_configure_dt(&button3, GPIO_INPUT | GPIO_PULL_UP);
-    // if (err < 0) {
-    //     printk("Error configuring button3 pin %d\n", err);
-    //     return GPIO_FAIL;
-    // }
-
-    // err = gpio_pin_interrupt_configure_dt(&button3, GPIO_INT_EDGE_TO_ACTIVE);
-    // if (err != 0) {
-    //     printk("Error configuring interrupt on button3 pin %d\n", err);
-    //     return GPIO_FAIL;
-    // }
-    // gpio_init_callback(&button3_cb_data, button3_callback, BIT(button3.pin));
-    // gpio_add_callback(button3.port, &button3_cb_data);
+    printk("Setting button3 interrupt\n");
+    err = gpio_is_ready_dt(&button3);
+    if (!err) {
+        printk("Error gpio_is_ready_dt led3 pin %d\n", err);
+        return GPIO_FAIL;
+    }
+    err = gpio_pin_configure_dt(&button3, GPIO_INPUT | GPIO_PULL_UP);
+    if (err < 0) {
+        printk("Error configuring button3 pin %d\n", err);
+        return GPIO_FAIL;
+    }
+    err = gpio_pin_interrupt_configure_dt(&button3, GPIO_INT_EDGE_TO_ACTIVE);
+    if (err != 0) {
+        printk("Error configuring interrupt on button3 pin %d\n", err);
+        return GPIO_FAIL;
+    }
+    gpio_init_callback(&button3_cb_data, button3_callback, BIT(button3.pin));
+    gpio_add_callback(button3.port, &button3_cb_data);
 
     // pwm_led0
     err = gpio_is_ready_dt(&pwm_led);
