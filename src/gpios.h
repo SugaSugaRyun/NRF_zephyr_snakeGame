@@ -20,6 +20,7 @@
 #endif
 static const struct pwm_dt_spec pwm_led = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
 
+
 // seven segment
 #define DEC0_NODE DT_ALIAS(dec0)
 #if !DT_NODE_HAS_STATUS(DEC0_NODE, okay)
@@ -45,7 +46,17 @@ static const struct gpio_dt_spec dec_input2 = GPIO_DT_SPEC_GET(DEC2_NODE, gpios)
 #endif
 static const struct gpio_dt_spec dec_input3 = GPIO_DT_SPEC_GET(DEC3_NODE, gpios);
 
+//rotary
+#if !DT_NODE_EXISTS(DT_ALIAS(qdec0))
+#error "Unsupported board: qdec0 devicetree alias is not defined"
+#endif
 
+#define SW_NODE DT_NODELABEL(gpiosw)
+#if !DT_NODE_HAS_STATUS(SW_NODE, okay)
+#error "Unsupported board: gpiosw devicetree alias is not defined or enabled"
+#endif
+static const struct gpio_dt_spec sw = GPIO_DT_SPEC_GET(SW_NODE, gpios);
+static struct gpio_callback sw_cb_data;
 
 // buttons
 #define SW0_NODE	DT_ALIAS(sw0)
@@ -75,3 +86,4 @@ static const struct gpio_dt_spec button3 = GPIO_DT_SPEC_GET(SW3_NODE, gpios);
 int pwm_init(void);
 int decoder_init(void);
 void seven_segment(int);
+void rotary_init(void);

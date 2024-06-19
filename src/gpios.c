@@ -325,6 +325,7 @@ extern int pause_flag;
 extern int mute_flag;
 extern int change_note_flag;
 
+const struct device *const dev = DEVICE_DT_GET(DT_ALIAS(qdec0));
 static uint32_t now_pwm_pulse = 1500000;
 void button0_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
@@ -498,4 +499,47 @@ int pwm_init(void) {
     }
     pwm_set_dt(&pwm_led, 0, 0);
     return GPIO_OK;
+}
+
+extern int speed;
+int speed_delta = 0;
+void sw_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	printk("SW pressed\n");
+    if(speed + speed_delta < 0){
+        speed = 0;
+    }
+    else{
+        speed += speed_delta;
+    }
+    speed_delta = 0;
+}
+
+void rotary_init(){
+    int rc;
+	
+
+	if (!device_is_ready(dev)) {
+		printk("Qdec device is not ready\n");
+		return;
+	}
+    if(!gpio_is_ready_dt(&sw)) {
+		printk("SW GPIO is not ready\n");
+		return;
+	}
+
+	int err = gpio_pin_configure_dt(&sw, GPIO_INPUT);
+	if(err < 0){
+		printk("Error configuring SW GPIO pin %d\n", err);
+		return;
+	}
+
+	err = gpio_pin_interrupt_configure_dt(&sw, GPIO_INT_EDGE_RISING);
+	if(err != 0){
+		printk("Error configuring SW GPIO interrupt %d\n", err);
+		return;
+	}
+
+	gpio_init_callback(&sw_cb_data, sw_callback, BIT(sw.pin));
+	gpio_add_callback(sw.port, &sw_cb_data);
 }

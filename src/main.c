@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/adc.h>
@@ -74,6 +75,7 @@ int x[128], y[128]; //save the position of snake
 int apple_x, apple_y; //save the position of apple
 int length = INIT_LENGTH; //current length of snake. can be changed by scoring
 int speed = INIT_SPEED; //current speed of game. can be changed by rotary encoder event
+extern int speed_delta;
 int dir = LEFT; //current direction of snake. can be changed by joystick event
 
 //for game logic
@@ -93,6 +95,7 @@ extern int apple_on;
 extern int current_music;
 extern int* melody[];
 extern int melody_len[];
+extern const struct device *const dev;
 int change_note_flag= 0;
 
 // ========INTERRUPT FUNCS============================
@@ -309,9 +312,25 @@ void control_joystick() {
 		}
 	}
 
-
+    struct sensor_value val;
 	while (1) {
+        int rc = sensor_sample_fetch(dev);
+		if (rc != 0) {
+			printk("Failed to fetch sample (%d)\n", rc);
+			return 0;
+		}
 
+		rc = sensor_channel_get(dev, SENSOR_CHAN_ROTATION, &val);
+		if (rc != 0) {
+			printk("Failed to get data (%d)\n", rc);
+			return 0;
+		}
+        if(val.val1 > 0){
+            speed_delta -= 5; //speed 와 게임 속도가 반비례
+        }
+        else if(val.val1 < 0){
+            speed_delta += 5;
+        }
 		(void)adc_sequence_init_dt(&adc_channels[0], &sequence);
 		err = adc_read(adc_channels[0].dev, &sequence);
 		if (err < 0) {
@@ -377,6 +396,7 @@ void control_joystick() {
 int main(){
     pwm_init();
     decoder_init();
+    rotary_init();
 	led_init();
     led_set_brightness(led, 0, 0);
     speed = INIT_SPEED;  
@@ -389,12 +409,12 @@ int main(){
 
     k_thread_name_set(joystick_tid, "joystick_thread");
     
-    k_tid_t bgm_tid = k_thread_create(&my_thread_data2, thread_stack_area2,
-                                     K_THREAD_STACK_SIZEOF(thread_stack_area2),
-                                     play_music_routine, NULL, NULL, NULL,
-                                     8, 0, K_NO_WAIT);
+    // k_tid_t bgm_tid = k_thread_create(&my_thread_data2, thread_stack_area2,
+    //                                  K_THREAD_STACK_SIZEOF(thread_stack_area2),
+    //                                  play_music_routine, NULL, NULL, NULL,
+    //                                  8, 0, K_NO_WAIT);
 
-    k_thread_name_set(bgm_tid, "bgm_thread");
+    // k_thread_name_set(bgm_tid, "bgm_thread");
 
     score_routine();
 
