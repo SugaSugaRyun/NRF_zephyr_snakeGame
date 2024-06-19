@@ -1,0 +1,68 @@
+/ {
+    aliases {
+        dec0 = &decoder0;
+        dec1 = &decoder1;
+        dec2 = &decoder2;
+        dec3 = &decoder3;
+    };
+	zephyr,user {
+		io-channels = <&adc 1>, <&adc 2>;
+	};
+    seven_seg {
+        compatible = "gpio-leds";
+        decoder0: decoder_0{
+            gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+        };
+        decoder1: decoder_1{
+            gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+        };
+        decoder2: decoder_2{
+            gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+        };
+        decoder3: decoder_3{
+            gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+        };
+    };
+};
+
+&adc {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_AIN1>; /* P0.03 */
+		zephyr,resolution = <10>;
+		// zephyr,differential;
+	};
+
+	channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_AIN2>; /* P0.04 */
+		zephyr,resolution = <10>;
+		// zephyr,differential;
+	};
+};
+
+
+&i2c0 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	ht16k33@70 {
+		compatible = "holtek,ht16k33";
+		reg = <0x70>;
+                /* Uncomment to use IRQ instead of polling: */
+		/* irq-gpios = <&gpio1 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>; */
+
+		keyscan {
+			compatible = "holtek,ht16k33-keyscan";
+		};
+	};
+};
+
