@@ -11,6 +11,8 @@
 #define FADE_DELAY      K_MSEC(FADE_DELAY_MS)
 #define PWM_PULSE_RATE  100000
 
+#define PLAY 0
+#define SCORE 1
 // pwm led
 #define PWM_NODE    DT_ALIAS(pwm_led0)
 #if !DT_NODE_HAS_STATUS(PWM_NODE, okay)

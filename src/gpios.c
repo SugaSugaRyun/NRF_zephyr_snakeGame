@@ -1,5 +1,11 @@
 #include "gpios.h"
 
+int current_music = 0;
+static struct gpio_callback button0_cb_data;
+static struct gpio_callback button1_cb_data;
+static struct gpio_callback button2_cb_data;
+// static struct gpio_callback button3_cb_data;
+
 #define GPIO_P0_BASE 0x50000000
 #define GPIO_OUT_REG_OFFSET 0x0504
 
@@ -95,7 +101,8 @@
 #define NOTE_AS7	(NOTE_AS6*2)
 #define NOTE_B7		(NOTE_B6*2)
 
-int melody[] = {
+
+int mario[] = {
 
   // Super Mario Bros theme
   // Score available at https://musescore.com/user/2123/scores/2145
@@ -187,141 +194,139 @@ int melody[] = {
 
 };
 
-// int melody[] = {
+int harry[] = {
 
 
-//   // Hedwig's theme fromn the Harry Potter Movies
-//   // Socre from https://musescore.com/user/3811306/scores/4906610
+  // Hedwig's theme fromn the Harry Potter Movies
+  // Socre from https://musescore.com/user/3811306/scores/4906610
   
-//   REST, 2, NOTE_D4, 4,
-//   NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4,
-//   NOTE_G4, 2, NOTE_D5, 4,
-//   NOTE_C5, -2, 
-//   NOTE_A4, -2,
-//   NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4,
-//   NOTE_F4, 2, NOTE_GS4, 4,
-//   NOTE_D4, -1, 
-//   NOTE_D4, 4,
+  REST, 2, NOTE_D4, 4,
+  NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4,
+  NOTE_G4, 2, NOTE_D5, 4,
+  NOTE_C5, -2, 
+  NOTE_A4, -2,
+  NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4,
+  NOTE_F4, 2, NOTE_GS4, 4,
+  NOTE_D4, -1, 
+  NOTE_D4, 4,
 
-//   NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4, //10
-//   NOTE_G4, 2, NOTE_D5, 4,
-//   NOTE_F5, 2, NOTE_E5, 4,
-//   NOTE_DS5, 2, NOTE_B4, 4,
-//   NOTE_DS5, -4, NOTE_D5, 8, NOTE_CS5, 4,
-//   NOTE_CS4, 2, NOTE_B4, 4,
-//   NOTE_G4, -1,
-//   NOTE_AS4, 4,
+  NOTE_G4, -4, NOTE_AS4, 8, NOTE_A4, 4, //10
+  NOTE_G4, 2, NOTE_D5, 4,
+  NOTE_F5, 2, NOTE_E5, 4,
+  NOTE_DS5, 2, NOTE_B4, 4,
+  NOTE_DS5, -4, NOTE_D5, 8, NOTE_CS5, 4,
+  NOTE_CS4, 2, NOTE_B4, 4,
+  NOTE_G4, -1,
+  NOTE_AS4, 4,
      
-//   NOTE_D5, 2, NOTE_AS4, 4,//18
-//   NOTE_D5, 2, NOTE_AS4, 4,
-//   NOTE_DS5, 2, NOTE_D5, 4,
-//   NOTE_CS5, 2, NOTE_A4, 4,
-//   NOTE_AS4, -4, NOTE_D5, 8, NOTE_CS5, 4,
-//   NOTE_CS4, 2, NOTE_D4, 4,
-//   NOTE_D5, -1, 
-//   REST,4, NOTE_AS4,4,  
+  NOTE_D5, 2, NOTE_AS4, 4,//18
+  NOTE_D5, 2, NOTE_AS4, 4,
+  NOTE_DS5, 2, NOTE_D5, 4,
+  NOTE_CS5, 2, NOTE_A4, 4,
+  NOTE_AS4, -4, NOTE_D5, 8, NOTE_CS5, 4,
+  NOTE_CS4, 2, NOTE_D4, 4,
+  NOTE_D5, -1, 
+  REST,4, NOTE_AS4,4,  
 
-//   NOTE_D5, 2, NOTE_AS4, 4,//26
-//   NOTE_D5, 2, NOTE_AS4, 4,
-//   NOTE_F5, 2, NOTE_E5, 4,
-//   NOTE_DS5, 2, NOTE_B4, 4,
-//   NOTE_DS5, -4, NOTE_D5, 8, NOTE_CS5, 4,
-//   NOTE_CS4, 2, NOTE_AS4, 4,
-//   NOTE_G4, -1, 
+  NOTE_D5, 2, NOTE_AS4, 4,//26
+  NOTE_D5, 2, NOTE_AS4, 4,
+  NOTE_F5, 2, NOTE_E5, 4,
+  NOTE_DS5, 2, NOTE_B4, 4,
+  NOTE_DS5, -4, NOTE_D5, 8, NOTE_CS5, 4,
+  NOTE_CS4, 2, NOTE_AS4, 4,
+  NOTE_G4, -1, 
   
-// };
+};
 
-// int melody[] = {
+int tetris[] = {
 
-//   //Based on the arrangement at https://www.flutetunes.com/tunes.php?id=192
+  //Based on the arrangement at https://www.flutetunes.com/tunes.php?id=192
   
-//   NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,
-//   NOTE_A4, 4,  NOTE_A4,8,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
-//   NOTE_B4, -4,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
-//   NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,8,  NOTE_A4,4,  NOTE_B4,8,  NOTE_C5,8,
+  NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,
+  NOTE_A4, 4,  NOTE_A4,8,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+  NOTE_B4, -4,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+  NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,8,  NOTE_A4,4,  NOTE_B4,8,  NOTE_C5,8,
 
-//   NOTE_D5, -4,  NOTE_F5,8,  NOTE_A5,4,  NOTE_G5,8,  NOTE_F5,8,
-//   NOTE_E5, -4,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
-//   NOTE_B4, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
-//   NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,4, REST, 4,
+  NOTE_D5, -4,  NOTE_F5,8,  NOTE_A5,4,  NOTE_G5,8,  NOTE_F5,8,
+  NOTE_E5, -4,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+  NOTE_B4, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+  NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,4, REST, 4,
 
-//   NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,
-//   NOTE_A4, 4,  NOTE_A4,8,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
-//   NOTE_B4, -4,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
-//   NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,8,  NOTE_A4,4,  NOTE_B4,8,  NOTE_C5,8,
+  NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,
+  NOTE_A4, 4,  NOTE_A4,8,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+  NOTE_B4, -4,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+  NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,8,  NOTE_A4,4,  NOTE_B4,8,  NOTE_C5,8,
 
-//   NOTE_D5, -4,  NOTE_F5,8,  NOTE_A5,4,  NOTE_G5,8,  NOTE_F5,8,
-//   NOTE_E5, -4,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
-//   NOTE_B4, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
-//   NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,4, REST, 4,
+  NOTE_D5, -4,  NOTE_F5,8,  NOTE_A5,4,  NOTE_G5,8,  NOTE_F5,8,
+  NOTE_E5, -4,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+  NOTE_B4, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+  NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,4, REST, 4,
   
 
-//   NOTE_E5,2,  NOTE_C5,2,
-//   NOTE_D5,2,   NOTE_B4,2,
-//   NOTE_C5,2,   NOTE_A4,2,
-//   NOTE_GS4,2,  NOTE_B4,4,  REST,8, 
-//   NOTE_E5,2,   NOTE_C5,2,
-//   NOTE_D5,2,   NOTE_B4,2,
-//   NOTE_C5,4,   NOTE_E5,4,  NOTE_A5,2,
-//   NOTE_GS5,2,
+  NOTE_E5,2,  NOTE_C5,2,
+  NOTE_D5,2,   NOTE_B4,2,
+  NOTE_C5,2,   NOTE_A4,2,
+  NOTE_GS4,2,  NOTE_B4,4,  REST,8, 
+  NOTE_E5,2,   NOTE_C5,2,
+  NOTE_D5,2,   NOTE_B4,2,
+  NOTE_C5,4,   NOTE_E5,4,  NOTE_A5,2,
+  NOTE_GS5,2,
 
-// };
+};
 
-// int melody[] = {
+int panther[] = {
 
-//   // Pink Panther theme
-//   // Score available at https://musescore.com/benedictsong/the-pink-panther
-//   // Theme by Masato Nakamura, arranged by Teddy Mason
+  // Pink Panther theme
+  // Score available at https://musescore.com/benedictsong/the-pink-panther
+  // Theme by Masato Nakamura, arranged by Teddy Mason
 
-//   REST,2, REST,4, REST,8, NOTE_DS4,8, 
-//   NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
-//   NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_E4,8, NOTE_G4,-8, NOTE_B4,8,   
-//   NOTE_AS4,2, NOTE_A4,-16, NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, 
-//   NOTE_E4,2, REST,4, REST,8, NOTE_DS4,4,
+  REST,2, REST,4, REST,8, NOTE_DS4,8, 
+  NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
+  NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_E4,8, NOTE_G4,-8, NOTE_B4,8,   
+  NOTE_AS4,2, NOTE_A4,-16, NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, 
+  NOTE_E4,2, REST,4, REST,8, NOTE_DS4,4,
 
-//   NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
-//   NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_G4,8, NOTE_B4,-8, NOTE_E5,8,
-//   NOTE_DS5,1,   
-//   NOTE_D5,2, REST,4, REST,8, NOTE_DS4,8, 
-//   NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
-//   NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_E4,8, NOTE_G4,-8, NOTE_B4,8,   
+  NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
+  NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_G4,8, NOTE_B4,-8, NOTE_E5,8,
+  NOTE_DS5,1,   
+  NOTE_D5,2, REST,4, REST,8, NOTE_DS4,8, 
+  NOTE_E4,-4, REST,8, NOTE_FS4,8, NOTE_G4,-4, REST,8, NOTE_DS4,8,
+  NOTE_E4,-8, NOTE_FS4,8,  NOTE_G4,-8, NOTE_C5,8, NOTE_B4,-8, NOTE_E4,8, NOTE_G4,-8, NOTE_B4,8,   
   
-//   NOTE_AS4,2, NOTE_A4,-16, NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, 
-//   NOTE_E4,-4, REST,4,
-//   REST,4, NOTE_E5,-8, NOTE_D5,8, NOTE_B4,-8, NOTE_A4,8, NOTE_G4,-8, NOTE_E4,-8,
-//   NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8,   
-//   NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, NOTE_E4,16, NOTE_E4,16, NOTE_E4,2,
+  NOTE_AS4,2, NOTE_A4,-16, NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, 
+  NOTE_E4,-4, REST,4,
+  REST,4, NOTE_E5,-8, NOTE_D5,8, NOTE_B4,-8, NOTE_A4,8, NOTE_G4,-8, NOTE_E4,-8,
+  NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8, NOTE_AS4,16, NOTE_A4,-8,   
+  NOTE_G4,-16, NOTE_E4,-16, NOTE_D4,-16, NOTE_E4,16, NOTE_E4,16, NOTE_E4,2,
  
-// };
+};
 
-static struct gpio_callback button0_cb_data;
-static struct gpio_callback button1_cb_data;
-static struct gpio_callback button2_cb_data;
-// static struct gpio_callback button3_cb_data;
+int* melody[] = {
+    NULL,
+    NULL,
+    mario,
+    harry,
+    tetris, 
+    panther
+};
+
+int melody_len[] = {
+    0,
+    0,
+    sizeof(mario),
+    sizeof(harry),
+    sizeof(tetris),
+    sizeof(panther)
+};
+
+extern int mode;
 
 static uint32_t now_pwm_pulse = 1500000;
 void button0_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-    now_pwm_pulse = 150000;
     printk("Button 0 pressed\n");
-    for(int i=0; i<sizeof(melody)/sizeof(int); ){
-        int ret = pwm_set_dt(&pwm_led, (uint32_t)(1/(float)melody[i++] * 1000000000), now_pwm_pulse);
-        if(ret < 0){
-        printk("Error setting pwm pulse %d\n", ret);
-        }
-        int delay = (60000 * 32);
-        if(melody[i] < 0){
-            k_busy_wait(delay /(-1 * melody[i++])* 1.5);
-        }
-        else{
-            k_busy_wait(delay / melody[i++]);
-        }
-        ret = pwm_set_dt(&pwm_led, 1, 1);
-        k_busy_wait(1000);
-        printk("index:%d\n",i/2);
-    }
-    
-    return;
+    if(mode == PLAY) score_routine();
+    else if(mode == SCORE) play_routine();
 }
 
 void button1_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)

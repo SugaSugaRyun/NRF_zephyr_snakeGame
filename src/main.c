@@ -52,11 +52,11 @@ int key;
 #define PRIORITY 7
 
 // thread stack memory allocation
-// K_THREAD_STACK_DEFINE(thread_stack_area, STACK_SIZE);
+K_THREAD_STACK_DEFINE(thread_stack_area, STACK_SIZE);
+struct k_thread my_thread_data;
 
-// // thread data structure
-// struct k_thread my_thread_data;
-
+K_THREAD_STACK_DEFINE(thread_stack_area2, STACK_SIZE);
+struct k_thread my_thread_data2;
 //map size setted by display size
 #define MAP_WIDTH 16
 #define MAP_HEIGHT 8
@@ -65,8 +65,7 @@ int key;
 #define SNAKE 1
 #define APPLE 2
 //for game mode
-#define PLAY 0
-#define SCORE 1
+
 //initial values
 #define INIT_LENGTH 3
 #define INIT_SPEED 200
@@ -76,13 +75,12 @@ int key;
 int map[MAP_HEIGHT*MAP_WIDTH]; //whole map state. 0: empty / 1: snake / 2: apple
 int x[128], y[128]; //save the position of snake
 int apple_x, apple_y; //save the position of apple
-int length; //current length of snake. can be changed by scoring
-int speed; //current speed of game. can be changed by rotary encoder event
-int dir; //current direction of snake. can be changed by joystick event
+int length = INIT_LENGTH; //current length of snake. can be changed by scoring
+int speed = INIT_SPEED; //current speed of game. can be changed by rotary encoder event
+int dir = LEFT; //current direction of snake. can be changed by joystick event
 
 //for game logic
 int idx(int x, int y);
-void print_map();
 void move(int dir); 
 void create_apple(); 
 //for gpio setting and interrupt setting
@@ -96,9 +94,11 @@ void control_joystick();
 int mode = SCORE;
 int pause_flag = 0;
 int mute_flag = 0;
+extern int apple_on;
+extern int current_music;
+extern int* melody[];
+extern int melody_len[];
 int change_note_flag= 0;
-int note_type; //type of BGM. 0~2
-int notes[NOTE_CNT];//notes
 
 // ========INTERRUPT FUNCS============================
 //start-stop game
@@ -121,7 +121,7 @@ void btn3_pushed(){
 
 //change BGM
 void btn4_pushed(){
-   note_type = (note_type+1)%NOTE_CNT; 
+//    note_type = (note_type+1)%NOTE_CNT; 
    change_note_flag = 1;
 }
 
@@ -134,30 +134,33 @@ void rotary_encoder_moved(){
 
 //=======================================================
 
-
-int main(){
-    pwm_init();
-    decoder_init();
-    setting_io();
-    speed = INIT_SPEED;  
-    //TODO setting interrupts
-    // score_routine();
-    dir = LEFT;
-    printk("hallo night\n");
-    // k_tid_t my_tid = k_thread_create(&my_thread_data, thread_stack_area,
-    //                                  K_THREAD_STACK_SIZEOF(thread_stack_area),
-    //                                  control_joystick, NULL, NULL, NULL,
-    //                                  PRIORITY, 0, K_NO_WAIT);
-
-    // // 스레드 이름 설정 (디버깅 용도로 유용)
-    // k_thread_name_set(my_tid, "my_thread");
-
+void play_music_routine(){
+    uint32_t now_pwm_pulse = 150000;
+    current_music = 5;
     while(1){
-        printk("dir:%d\n", dir);
-    };
-
-    return 0;
-
+        change_note_flag = 0;
+        for(int i=0; i<melody_len[current_music]/sizeof(int); ){
+            if(change_note_flag == 1){
+                break;
+            }
+            int ret = pwm_set_dt(&pwm_led, (uint32_t)(1/(float)melody[current_music][i++] * 1000000000), now_pwm_pulse);
+            if(ret < 0){
+            printk("Error setting pwm pulse %d\n", ret);
+            }
+            int delay = (60000 * 32);
+            if(melody[current_music][i] < 0){
+                k_busy_wait(delay /(-1 * melody[current_music][i++])* 1.5);
+            }
+            else{
+                k_busy_wait(delay / melody[current_music][i++]);
+            }
+            ret = pwm_set_dt(&pwm_led, 1, 1);
+            k_busy_wait(1000);
+            // printk("index:%d\n",i/2);
+        }
+    }
+    
+    return;
 }
 
 // play the snake game
@@ -168,7 +171,7 @@ void play_routine(){
     for(int i = 0; i < MAP_WIDTH*MAP_HEIGHT; i++) map[i] = 0;
 
     //reset values
-    dir = RIGHT; 
+    dir = LEFT; 
     length = INIT_LENGTH;  
 
     //set initial body position
@@ -193,18 +196,18 @@ void play_routine(){
         //     key=0; 
         // }
 
-        //TODO should be replaced with button1 interrupt
-        if(key == ESC){
-            btn1_pushed(); 
-            key = 0;
-        }
+        // //TODO should be replaced with button1 interrupt
+        // if(key == ESC){
+        //     btn1_pushed(); 
+        //     key = 0;
+        // }
 
-        //TODO should be replaced with button2 interrupt
-        if(key == PAUSE){
-            // printf("PAUSESDFSDFSDFSDF\n");
-            btn2_pushed(); 
-            key = 0;
-        }
+        // //TODO should be replaced with button2 interrupt
+        // if(key == PAUSE){
+        //     // printf("PAUSESDFSDFSDFSDF\n");
+        //     btn2_pushed(); 
+        //     key = 0;
+        // }
         //TODO ===========================================================
 
         if(pause_flag == 0) move(dir); 
@@ -216,18 +219,10 @@ void play_routine(){
 //display the last score
 void score_routine(){  
     mode = SCORE;
-
-    //TODO change screen with score got
-
-    // printf("----------------------------------\n");
-    // printf("\n\nSCORE: %d\n\n", length - INIT_LENGTH); //for debug
-    // printf("----------------------------------\n");
-
-    //TODO sholud be replaced.... with interrupt handling... 
-    // Sleep(500);
-    //     while (kbhit()) getch();
-    // key=getch();
-    btn1_pushed();
+    led_num(length-INIT_LENGTH);
+    // k_sleep(K_MSEC(3000));
+    while(1);
+    // btn1_pushed();
     //TODO ===================================================
 }
 
@@ -268,7 +263,7 @@ void move(int dir){
     if(dir == UP) --y[0]; 
     if(dir == DOWN) ++y[0];     
     map[idx(x[i], y[i])] = 1;
-    // print_map(); 
+    print_map(map); 
 
 }
 
@@ -303,20 +298,7 @@ int idx(int x, int y){
     return (( y * 16 ) + x); 
 }
 
-//print current map state for debug
-//TODO add the part for display at dotted metrics
-void print_map(){
-    // printf("-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n");
-    // for(int i = 0; i < MAP_HEIGHT*MAP_WIDTH; i++){
-    //     if(i%16 == 0) printf("|");
-    //     if(map[i] == SNAKE) printf(" S ");
-    //     else if(map[i] == APPLE) printf(" A ");
-    //     else printf("   ");
-    //     if(i%16 == 15) printf("|\n");
-    // }
-    // printf("-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n");
-    // printf("SCORE: %d | pause: %d\n\n", length - INIT_LENGTH, pause_flag);
-}
+
 
 void setting_io(){
     //TODO setting I/O devices and interrupt
@@ -341,8 +323,7 @@ bool isChange(void)
 	return false;
 }
 //endif
-void control_joystick()
-{
+void control_joystick() {
 	int err;
 	uint32_t count = 0;
 	uint16_t buf;
@@ -358,7 +339,6 @@ void control_joystick()
 			printk("ADC controller device %s not ready\n", adc_channels[i].dev->name);
 			return;
 		}
-
 		err = adc_channel_setup_dt(&adc_channels[i]);
 		if (err < 0) {
 			printk("Could not setup channel #%d (%d)\n", i, err);
@@ -366,10 +346,8 @@ void control_joystick()
 		}
 	}
 
-	led_init();
 
 	while (1) {
-		printk("ADC reading[%u]: ", count++);
 
 		(void)adc_sequence_init_dt(&adc_channels[0], &sequence);
 		err = adc_read(adc_channels[0].dev, &sequence);
@@ -377,7 +355,6 @@ void control_joystick()
 			printk("Could not read (%d)\n", err);
 			continue;
 		}
-
 		nowX = (int32_t)buf;
 
 		(void)adc_sequence_init_dt(&adc_channels[1], &sequence);
@@ -386,11 +363,11 @@ void control_joystick()
 			printk("Could not read (%d)\n", err);
 			continue;
 		}
-
 		nowY = (int32_t)buf;
 
-        printk("Joy X: %" PRIu32 ", ", nowX);
-		printk("Joy Y: %" PRIu32 ", ", nowY);
+		// printk("ADC reading[%u]: ", count++);
+        // printk("Joy X: %" PRIu32 ", ", nowX);
+		// printk("Joy Y: %" PRIu32 ", ", nowY);
 
 		if (nowX >= 65500 || nowY >= 65500){
 			printk("Out of Range\n");
@@ -400,7 +377,7 @@ void control_joystick()
 
 		bool checkFlag = isChange();
 		if(!checkFlag){
-            printk("No Change\n");
+            // printk("No Change\n");
 			k_sleep(K_MSEC(100));
 			continue;
 		} 
@@ -410,28 +387,55 @@ void control_joystick()
 //  if((dir==LEFT&&key!=RIGHT)||(dir==RIGHT&&key!=LEFT)||(dir==UP&&key!=DOWN)||(dir==DOWN&&key!=UP)) dir=key; 
 		if (nowX == ADC_MAX && nowY == ADC_MAX){
 			// led_on_center();
-			printk("Center");
+			// printk("Center\n");
 		} else if (nowX < AXIS_DEVIATION && nowY == ADC_MAX){
 			// led_on_left();
-			printk("Left");
+			printk("Left\n");
             if(dir != RIGHT) dir = LEFT;
 		} else if (nowX > AXIS_DEVIATION && nowY == ADC_MAX){
 			// led_on_right();
-			printk("Right");
+			printk("Right\n");
             if(dir != LEFT) dir = RIGHT;
 		} else if (nowY > AXIS_DEVIATION && nowX == ADC_MAX){
 			// led_on_up();
-			printk("Up");
+			printk("Up\n");
             if(dir != DOWN) dir = UP;
 		} else if (nowY < AXIS_DEVIATION && nowX == ADC_MAX){
 			// led_on_down();
-			printk("Down");
+			printk("Down\n");
             if(dir != UP) dir = DOWN;
 		}
-
-        printk("\n");
 
 		k_sleep(K_MSEC(100));
 	}
 	return;
+}
+
+int main(){
+    pwm_init();
+    decoder_init();
+	led_init();
+    setting_io();
+    led_set_brightness(led, 0, 0);
+    speed = INIT_SPEED;  
+    //TODO setting interrupts
+    printk("hallo night\n");
+    k_tid_t joystick_tid = k_thread_create(&my_thread_data, thread_stack_area,
+                                     K_THREAD_STACK_SIZEOF(thread_stack_area),
+                                     control_joystick, NULL, NULL, NULL,
+                                     PRIORITY, 0, K_NO_WAIT);
+
+    k_thread_name_set(joystick_tid, "joystick_thread");
+    
+    k_tid_t bgm_tid = k_thread_create(&my_thread_data2, thread_stack_area2,
+                                     K_THREAD_STACK_SIZEOF(thread_stack_area2),
+                                     play_music_routine, NULL, NULL, NULL,
+                                     8, 0, K_NO_WAIT);
+
+    k_thread_name_set(bgm_tid, "bgm_thread");
+
+    score_routine();
+
+    return 0;
+
 }

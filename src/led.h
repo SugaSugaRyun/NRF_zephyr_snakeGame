@@ -7,11 +7,14 @@
 #define KEY_NODE DT_CHILD(LED_NODE, keyscan)
 
 #define MAX_LED_NUM 128
+#define MAX_LED_MATRIX_IDX 10
+#define MAX_LED_MATRIX_NUM 64
 
 static const struct device *const led = DEVICE_DT_GET(LED_NODE);
 
 int led_init(void);
 
+void print_map(int*);
 void led_off_all(void);
 void led_on_center(void);
 void led_on_right(void);
