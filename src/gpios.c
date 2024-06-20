@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2024 Garyun Kim, Jinju Lee
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "gpios.h"
 
 int current_music = 0;
@@ -6,9 +30,6 @@ static struct gpio_callback button1_cb_data;
 static struct gpio_callback button2_cb_data;
 static struct gpio_callback button3_cb_data;
 // static struct gpio_callback button3_cb_data;
-
-#define GPIO_P0_BASE 0x50000000
-#define GPIO_OUT_REG_OFFSET 0x0504
 
 #define REST   0.0
 #define NOTE_C1		32.7032 
@@ -393,19 +414,16 @@ int decoder_init(void){
     return 0;
 }
 
-void seven_segment(int num){
-    if(num > 7) return;
-    struct gpio_dt_spec inputs[] = {dec_input0, dec_input1, dec_input2};
-    for(int i=0; i<3; i++){
-        if(num & (1<<i)){
-            gpio_pin_set_dt(&inputs[i], 0);
-        }
-        else{
-            gpio_pin_set_dt(&inputs[i], 1);
-        }
-
-        
-    }
+void volatile seven_segment(int num){
+    __asm (
+        "CMP R0, #7\n\t" //if(num>7) return;
+        "IT GT\n\t"
+        "BGT end\n\t"
+        "LDR R2, =0x50000000 + 0x504\n\t"
+        "LSL R0, R0, #14\n\t"
+        "STR R0, [R2]\n\t"
+        "end:\n\t"
+    );
 }
 
 int pwm_init(void) {
