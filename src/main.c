@@ -86,7 +86,7 @@ void create_apple();
 void play_routine();  
 void score_routine();
 bool isChange(void);
-void control_joystick();
+void sensing();
 
 int mode = SCORE;
 int pause_flag = 0;
@@ -118,7 +118,7 @@ void rotary_encoder_moved(){
 
 void play_music_routine(){
     uint32_t now_pwm_pulse = 150000;
-    current_music = 5;
+    current_music = 2;
     seven_segment(current_music);
     while(1){
         change_note_flag = 0;
@@ -289,7 +289,7 @@ bool isChange(void)
 	return false;
 }
 //endif
-void control_joystick() {
+void sensing() {
 	int err;
 	uint32_t count = 0;
 	uint16_t buf;
@@ -347,10 +347,6 @@ void control_joystick() {
 		}
 		nowY = (int32_t)buf;
 
-		// printk("ADC reading[%u]: ", count++);
-        // printk("Joy X: %" PRIu32 ", ", nowX);
-		// printk("Joy Y: %" PRIu32 ", ", nowY);
-
 		if (nowX >= 65500 || nowY >= 65500){
 			printk("Out of Range\n");
 			k_sleep(K_MSEC(100));
@@ -402,19 +398,19 @@ int main(){
     speed = INIT_SPEED;  
     //TODO setting interrupts
     printk("hallo night\n");
-    k_tid_t joystick_tid = k_thread_create(&my_thread_data, thread_stack_area,
+    k_tid_t sensing_tid = k_thread_create(&my_thread_data, thread_stack_area,
                                      K_THREAD_STACK_SIZEOF(thread_stack_area),
-                                     control_joystick, NULL, NULL, NULL,
+                                     sensing, NULL, NULL, NULL,
                                      PRIORITY, 0, K_NO_WAIT);
 
-    k_thread_name_set(joystick_tid, "joystick_thread");
+    k_thread_name_set(sensing_tid, "joystick_thread");
     
-    // k_tid_t bgm_tid = k_thread_create(&my_thread_data2, thread_stack_area2,
-    //                                  K_THREAD_STACK_SIZEOF(thread_stack_area2),
-    //                                  play_music_routine, NULL, NULL, NULL,
-    //                                  8, 0, K_NO_WAIT);
+    k_tid_t bgm_tid = k_thread_create(&my_thread_data2, thread_stack_area2,
+                                     K_THREAD_STACK_SIZEOF(thread_stack_area2),
+                                     play_music_routine, NULL, NULL, NULL,
+                                     8, 0, K_NO_WAIT);
 
-    // k_thread_name_set(bgm_tid, "bgm_thread");
+    k_thread_name_set(bgm_tid, "bgm_thread");
 
     score_routine();
 
